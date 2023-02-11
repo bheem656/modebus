@@ -161,6 +161,7 @@ void ModbusInit(modbusHandler_t * modH)
 	  while(1); //error no more Modbus handlers supported
   }
 
+  printf("master initialization completed ! \r\n");
 }
 
 /**
@@ -202,6 +203,8 @@ void ModbusStart(modbusHandler_t * modH)
 
     modH->u8lastRec = modH->u8BufferSize = 0;
     modH->u16InCnt = modH->u16OutCnt = modH->u16errCnt = 0;
+
+    printf("modbus started ! \r\n");
 }
 
 
@@ -330,6 +333,7 @@ void StartTaskModbusSlave(void *argument)
 void ModbusQuery(modbusHandler_t * modH, modbus_t telegram )
 {
 	//Add the telegram to the TX Queue of Modbus
+	 printf("master ModbusQuery queue ! \r\n");
 	xQueueSendToBack(modH->QueueTelegramHandle, &telegram, 0);
 }
 
@@ -349,7 +353,7 @@ int8_t SendQuery(modbusHandler_t *modH ,  modbus_t telegram )
 {
 
 
-	printf("Sending query.......");
+	printf("master Sending query.......\r\n");
 
 	uint8_t u8regsno, u8bytesno;
 	uint8_t  error = 0;
@@ -432,8 +436,10 @@ int8_t SendQuery(modbusHandler_t *modH ,  modbus_t telegram )
 	    for (uint16_t i=0; i< telegram.u16CoilsNo; i++)
 	    {
 	        modH->au8Buffer[  modH->u8BufferSize ] = highByte(  modH->au16regs[ i ] );
+//	        printf("....highr byte %02X.....\r\n",modH->au8Buffer[  modH->u8BufferSize ]);
 	        modH->u8BufferSize++;
 	        modH->au8Buffer[  modH->u8BufferSize ] = lowByte(  modH->au16regs[ i ] );
+//	        printf("....lower byte %02X.....\r\n",modH->au8Buffer[  modH->u8BufferSize ]);
 	        modH->u8BufferSize++;
 	    }
 	    break;
@@ -458,9 +464,11 @@ void StartTaskModbusMaster(void *argument)
   modbusHandler_t *modH =  (modbusHandler_t *)argument;
   uint32_t ulNotificationValue;
   modbus_t telegram;
-
+  printf("master starting task ! \r\n");
   for(;;)
   {
+
+	  printf("______modbus task running____\r\n ");
 	  /*Wait indefinitely for a telegram to send */
 	  xQueueReceive(modH->QueueTelegramHandle, &telegram, portMAX_DELAY);
 
@@ -851,6 +859,7 @@ void buildException( uint8_t u8exception, modbusHandler_t *modH )
  */
 void sendTxBuffer(modbusHandler_t *modH)
 {
+	 printf("sendTxBuffer ! \r\n");
     // append CRC to message
     uint16_t u16crc = calcCRC(modH->au8Buffer, modH->u8BufferSize);
     modH->au8Buffer[ modH->u8BufferSize ] = u16crc >> 8;
@@ -858,16 +867,24 @@ void sendTxBuffer(modbusHandler_t *modH)
     modH->au8Buffer[ modH->u8BufferSize ] = u16crc & 0x00ff;
     modH->u8BufferSize++;
 
+
+
+	for (int i = 0; i < modH->u8BufferSize; i++)
+	        printf("%02X ", modH->au8Buffer[i]);
+    printf(" \r\n");
+
     if (modH->EN_Port != NULL)
     {
         // set RS485 transceiver to transmit mode
     	HAL_GPIO_WritePin(modH->EN_Port, modH->EN_Pin, GPIO_PIN_SET);
+    	printf("______ PIN SET  HIGH _______\r\n");
     }
 
     // transfer buffer to serial line
     //port->write( au8Buffer, u8BufferSize );
-    //HAL_UART_Transmit(modH->port, modH->au8Buffer , modH->u8BufferSize, 100);
+//    HAL_UART_Transmit(modH->port, modH->au8Buffer , modH->u8BufferSize, 100);
     HAL_UART_Transmit_IT(modH->port, modH->au8Buffer,  modH->u8BufferSize);
+    printf("___%02X_____\r\n", modH->au8Buffer);
 
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY); //wait notification from TXE interrupt
 
@@ -883,6 +900,7 @@ void sendTxBuffer(modbusHandler_t *modH)
     		taskYIELD();
     	 }
     	 HAL_GPIO_WritePin(modH->EN_Port, modH->EN_Pin, GPIO_PIN_RESET);
+    	 printf("______ PIN SET  LOW _______\r\n");
      }
 
      xQueueGenericReset(modH->QueueModbusHandle, pdFALSE);

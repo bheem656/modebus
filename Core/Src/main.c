@@ -73,6 +73,11 @@ void StartDefaultTask(void *argument);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+int _write(int file, char *ptr, int len)
+{
+	HAL_UART_Transmit(&huart3, (char*)ptr, len, HAL_MAX_DELAY);
+	return len;
+}
 /* USER CODE END 0 */
 
 /**
@@ -110,41 +115,58 @@ int main(void)
 
 
 
-  uint8_t temp[5];
-  temp[0] = 0xF1F6;
-  temp[1] = 0xF2F7;
-  temp[2] = 0xF3F8;
-  temp[3] = 0xF4F9;
-  temp[4] = 0xF5FA;
 
 
-  modbus_t data_query;
-  data_query.u8id = 0x0A;
-  data_query.u8fct = 3;
-  data_query.u16RegAdd = 0x04; // 40005
-  data_query.u16CoilsNo = 0x05;
-  data_query.au16reg = &temp;
 
 
-  /* Master initialization */
-   ModbusH.uiModbusType = MASTER_RTU;
-   ModbusH.port =  &huart4;
-   ModbusH.u8id = 0; // Form master it must be 0
-   ModbusH.u16timeOut = 1000;
-   ModbusH.EN_Port = NULL;
-   ModbusH.EN_Port = EN_485_GPIO_Port;
-   ModbusH.EN_Pin = EN_485_Pin;
-   ModbusH.u32overTime = 0;
-   ModbusH.au16regs = ModbusDATA;
-   ModbusH.u8regsize= sizeof(ModbusDATA)/sizeof(ModbusDATA[0]);
-   //Initialize Modbus library
-   ModbusInit(&ModbusH);
-   //Start capturing traffic on serial Port
-   ModbusStart(&ModbusH);
 
 
-//   SendQuery(&ModbusH,data_query);
-   ModbusQuery(&ModbusH,data_query);
+/* Master initialization */
+ModbusH.uiModbusType = MASTER_RTU;
+ModbusH.port =  &huart4;
+ModbusH.u8id = 0; // Form master it must be 0
+ModbusH.u16timeOut = 1000;
+ModbusH.EN_Port = NULL;
+ModbusH.EN_Port = EN_485_GPIO_Port;
+ModbusH.EN_Pin = EN_485_Pin;
+ModbusH.u32overTime = 0;
+ModbusH.au16regs = ModbusDATA;
+ModbusH.u8regsize= sizeof(ModbusDATA)/sizeof(ModbusDATA[0]);
+//Initialize Modbus library
+ModbusInit(&ModbusH);
+//Start capturing traffic on serial Port
+ModbusStart(&ModbusH);
+
+
+
+uint8_t payload_size = 10;
+
+uint8_t temp[10] ;
+temp[0] = 0x01;
+temp[1] = 0xFF;
+temp[2] = 0x02;
+temp[3] = 0xFF;
+temp[4] = 0x03;
+temp[5] = 0xFF;
+temp[6] = 0x04;
+temp[7] = 0xFF;
+temp[8] = 0x05;
+temp[9] = 0xFF;
+
+
+uint16_t *b = (uint16_t*)malloc(sizeof(uint8_t)*payload_size);
+  memcpy(b,temp, sizeof(uint8_t)*payload_size);
+
+modbus_t data_query;
+data_query.u8id = 0x0A;
+data_query.u8fct = MB_FC_WRITE_MULTIPLE_REGISTERS;
+data_query.u16RegAdd = 0x00; // 40005
+data_query.u16CoilsNo = 0x05;
+data_query.au16reg = b;
+printf("data query address %X___\r\n", data_query.au16reg);
+
+ModbusQuery(&ModbusH,data_query);
+
    /* Slave initialization */
 //
 //   ModbusH2.uiModbusType = SLAVE_RTU;
@@ -197,6 +219,8 @@ int main(void)
 
   /* Start scheduler */
   osKernelStart();
+
+
 
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
@@ -286,7 +310,7 @@ static void MX_UART4_Init(void)
   huart4.Init.BaudRate = 115200;
   huart4.Init.WordLength = UART_WORDLENGTH_8B;
   huart4.Init.StopBits = UART_STOPBITS_1;
-  huart4.Init.Parity = UART_PARITY_EVEN;
+  huart4.Init.Parity = UART_PARITY_NONE;
   huart4.Init.Mode = UART_MODE_TX_RX;
   huart4.Init.HwFlowCtl = UART_HWCONTROL_NONE;
   huart4.Init.OverSampling = UART_OVERSAMPLING_16;
