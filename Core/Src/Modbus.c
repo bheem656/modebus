@@ -349,6 +349,8 @@ int8_t SendQuery(modbusHandler_t *modH ,  modbus_t telegram )
 {
 
 
+	printf("Sending query.......");
+
 	uint8_t u8regsno, u8bytesno;
 	uint8_t  error = 0;
 	xSemaphoreTake(modH->ModBusSphrHandle , portMAX_DELAY); //before processing the message get the semaphore

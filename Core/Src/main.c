@@ -72,27 +72,7 @@ void StartDefaultTask(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
-{
-	/* Modbus RTU callback BEGIN */
-	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-	int i;
-	for (i = 0; i < numberHandlers; i++ )
-	{
-		if (mHandlers[i]->port == huart )
-		{
-			xTaskNotifyFromISR(mHandlers[i]->myTaskModbusAHandle, 0, eNoAction, &xHigherPriorityTaskWoken);
-			break;
-		}
-	}
-	/* Modbus RTU callback END */
 
-	/*
-	 * Here you should implement the callback code for other UARTs not used by Modbus
-	 *
-	 * */
-
-}
 /* USER CODE END 0 */
 
 /**
@@ -128,18 +108,22 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
 
-//  char *data = "MODBUS COMMUNICATION\n";
+
+
+  uint8_t temp[5];
+  temp[0] = 0xF1F6;
+  temp[1] = 0xF2F7;
+  temp[2] = 0xF3F8;
+  temp[3] = 0xF4F9;
+  temp[4] = 0xF5FA;
+
 
   modbus_t data_query;
-  data_query.u8id = 10;
+  data_query.u8id = 0x0A;
   data_query.u8fct = 3;
-  data_query.u16RegAdd = 0x10;
-  data_query.u16CoilsNo = 4;
-  data_query.au16reg = &ModbusDATA;
-
-
-//  HAL_UART_Transmit(&huart1,(uint8_t *)data, 10, 1000);
-//  HAL_UART_Transmit_IT(&huart4, (uint8_t *)data, 100);
+  data_query.u16RegAdd = 0x04; // 40005
+  data_query.u16CoilsNo = 0x05;
+  data_query.au16reg = &temp;
 
 
   /* Master initialization */
@@ -160,23 +144,23 @@ int main(void)
 
 
 //   SendQuery(&ModbusH,data_query);
-
+   ModbusQuery(&ModbusH,data_query);
    /* Slave initialization */
-
-   ModbusH2.uiModbusType = SLAVE_RTU;
-   ModbusH2.port =  &huart3;
-   ModbusH2.u8id = 17;
-   ModbusH2.u16timeOut = 1000;
-   ModbusH2.EN_Port = NULL;
-   //ModbusH2.EN_Port = LD2_GPIO_Port;
-   //ModbusH2.EN_Pin = LD2_Pin;
-   ModbusH2.u32overTime = 0;
-   ModbusH2.au16regs = ModbusDATA2;
-   ModbusH2.u8regsize= sizeof(ModbusDATA2)/sizeof(ModbusDATA2[0]);
-   //Initialize Modbus library
-   ModbusInit(&ModbusH2);
-   //Start capturing traffic on serial Port
-   ModbusStart(&ModbusH2);
+//
+//   ModbusH2.uiModbusType = SLAVE_RTU;
+//   ModbusH2.port =  &huart3;
+//   ModbusH2.u8id = 17;
+//   ModbusH2.u16timeOut = 1000;
+//   ModbusH2.EN_Port = NULL;
+//   //ModbusH2.EN_Port = LD2_GPIO_Port;
+//   //ModbusH2.EN_Pin = LD2_Pin;
+//   ModbusH2.u32overTime = 0;
+//   ModbusH2.au16regs = ModbusDATA2;
+//   ModbusH2.u8regsize= sizeof(ModbusDATA2)/sizeof(ModbusDATA2[0]);
+//   //Initialize Modbus library
+//   ModbusInit(&ModbusH2);
+//   //Start capturing traffic on serial Port
+//   ModbusStart(&ModbusH2);
 
   /* USER CODE END 2 */
 
@@ -302,7 +286,7 @@ static void MX_UART4_Init(void)
   huart4.Init.BaudRate = 115200;
   huart4.Init.WordLength = UART_WORDLENGTH_8B;
   huart4.Init.StopBits = UART_STOPBITS_1;
-  huart4.Init.Parity = UART_PARITY_NONE;
+  huart4.Init.Parity = UART_PARITY_EVEN;
   huart4.Init.Mode = UART_MODE_TX_RX;
   huart4.Init.HwFlowCtl = UART_HWCONTROL_NONE;
   huart4.Init.OverSampling = UART_OVERSAMPLING_16;
@@ -461,7 +445,23 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+//int __io_putchar(int ch)
+//{
+// uint8_t c[1];
+// c[0] = ch & 0x00FF;
+// HAL_UART_Transmit(&huart3, &*c, 1, 10);
+// return ch;
+//}
+//
+//int _write(int file,char *ptr, int len)
+//{
+// int DataIdx;
+// for(DataIdx= 0; DataIdx< len; DataIdx++)
+// {
+// __io_putchar(*ptr++);
+// }
+//return len;
+//}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
