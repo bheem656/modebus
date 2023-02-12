@@ -2,8 +2,7 @@
 /**
   ******************************************************************************
   * @file           : main.c
-  * @brief          : Main program body
-  * @author			: Bheem Prakash
+  * @brief          : M2
   ******************************************************************************
   * @attention
   *
@@ -53,10 +52,15 @@ const osThreadAttr_t defaultTask_attributes = {
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* USER CODE BEGIN PV */
+
 modbusHandler_t ModbusH;
 uint16_t ModbusDATA[8];
 modbusHandler_t ModbusH2;
 uint16_t ModbusDATA2[8];
+
+uint8_t rf_enable =  0; // 1 - Master : 0 - slave
+uint8_t master_address = 0; // don't change it should be always 0
+uint8_t slave_address = 12; // range 10 -255 unique number for every slave
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -68,17 +72,57 @@ void StartDefaultTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 
+void master_slave_selction(uint8_t select);
+
+void master_slave_selction(uint8_t select)
+{
+	  if(select)
+	  {
+			UART4->CR1 &= ~(USART_CR1_UE);
+			UART4->CR2 |= USART_CR2_SWAP;
+			UART4->CR1 |= USART_CR1_UE;
+
+		  ModbusH.uiModbusType = MASTER_RTU;
+		  ModbusH.port =  &huart4;
+		  ModbusH.u8id = master_address; // Form master it must be 0
+		  ModbusH.u16timeOut = 1000;
+		  ModbusH.EN_Port = EN_485_GPIO_Port;
+		  ModbusH.EN_Pin = EN_485_Pin;
+		  ModbusH.u32overTime = 0;
+		  ModbusH.au16regs = ModbusDATA;
+		  ModbusH.u8regsize= sizeof(ModbusDATA)/sizeof(ModbusDATA[0]);
+		  ModbusInit(&ModbusH);
+		  ModbusStart(&ModbusH);
+
+		  printf("master selected with ID : %d \r\n", master_address);
+	  }
+
+	  else
+	  {
+
+		   ModbusH2.uiModbusType = SLAVE_RTU;
+		   ModbusH2.port =  &huart4;
+		   ModbusH2.u8id = 10;
+		   ModbusH2.u16timeOut = 1000;
+		   ModbusH2.EN_Port = NULL;
+		   ModbusH2.u32overTime = 0;
+		   ModbusH2.au16regs = ModbusDATA2;
+		   ModbusH2.u8regsize= sizeof(ModbusDATA2)/sizeof(ModbusDATA2[0]);
+		   ModbusInit(&ModbusH2);
+		   ModbusStart(&ModbusH2);
+
+		   printf("slave selected with ID : %d \r\n", slave_address);
+	  }
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
 int _write(int file, char *ptr, int len)
 {
 	HAL_UART_Transmit(&huart3, (char*)ptr, len, HAL_MAX_DELAY);
 	return len;
 }
-
 /* USER CODE END 0 */
 
 /**
@@ -114,62 +158,40 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
 
-//  char *data = "MODBUS COMMUNICATION\n";
 
-//  modbus_t data_query;
-//  data_query.u8id = 10;
-//  data_query.u8fct = 3; // MB_FC_WRITE_MULTIPLE_REGISTERS
-//  data_query.u16RegAdd = 0x10;
-//  data_query.u16CoilsNo = 4; // write 4 byte data
-//  data_query.au16reg = &data;
+  master_slave_selction(rf_enable );
 
+  if(rf_enable)
+  {
+		uint8_t payload_size =10;
 
-//  HAL_UART_Transmit(&huart1,(uint8_t *)data, 10, 1000);
-//  HAL_UART_Transmit_IT(&huart4, (uint8_t *)data, 100);
+		uint8_t temp[10] ;
+		temp[0] = 0x01;
+		temp[1] = 0xFF;
+		temp[2] = 0x02;
+		temp[3] = 0xFF;
+		temp[4] = 0x03;
+		temp[5] = 0xFF;
+		temp[6] = 0x04;
+		temp[7] = 0xFF;
+		temp[8] = 0x05;
+		temp[9] = 0xFF;
 
+		uint16_t *b = (uint16_t*)malloc(sizeof(uint8_t)*payload_size);
+		memcpy(b,temp, sizeof(uint8_t)*payload_size);
 
+		modbus_t data_query;
+		data_query.u8id = 11; // select slave id where data need to send
+		data_query.u8fct = MB_FC_WRITE_MULTIPLE_REGISTERS;
+		data_query.u16RegAdd = 0x00; // 40005
+		data_query.u16CoilsNo = 0x05;
+		data_query.au16reg = b;
+		ModbusQuery(&ModbusH,data_query);
 
-
-//  /* Master initialization */
-//   ModbusH.uiModbusType = MASTER_RTU;
-//   ModbusH.port =  &huart4;
-//   ModbusH.u8id = 0; // Form master it must be 0
-//   ModbusH.u16timeOut = 1000;
-//   ModbusH.EN_Port = NULL;
-//   ModbusH.EN_Port = EN_485_GPIO_Port;
-//   ModbusH.EN_Pin = EN_485_Pin;
-//   ModbusH.u32overTime = 0;
-//   ModbusH.au16regs = ModbusDATA;
-//   ModbusH.u8regsize= sizeof(ModbusDATA)/sizeof(ModbusDATA[0]);
-//   //Initialize Modbus library
-//   ModbusInit(&ModbusH);
-//   //Start capturing traffic on serial Port
-//   ModbusStart(&ModbusH);
-//
-//
-//   ModbusQuery(&ModbusH,data_query);
-   /* Slave initialization */
-//
-//
-  uint16_t rcvd_data[100];
-
-   ModbusH2.uiModbusType = SLAVE_RTU;
-   ModbusH2.port =  &huart4;
-   ModbusH2.u8id = 10;
-   ModbusH2.u16timeOut = 1000;
-   ModbusH2.EN_Port = NULL;
-   //ModbusH2.EN_Port = LD2_GPIO_Port;
-   //ModbusH2.EN_Pin = LD2_Pin;
-   ModbusH2.u32overTime = 0;
-   ModbusH2.au16regs = ModbusDATA2;
-   ModbusH2.u8regsize= sizeof(ModbusDATA2)/sizeof(ModbusDATA2[0]);
-   //Initialize Modbus library
-   ModbusInit(&ModbusH2);
-   //Start capturing traffic on serial Port
-   ModbusStart(&ModbusH2);
+  }
 
 
-//   printf("main runnuing\r\n");
+
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -355,6 +377,7 @@ static void MX_GPIO_Init(void)
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -450,26 +473,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
   HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+
 }
 
 /* USER CODE BEGIN 4 */
-//int __io_putchar(int ch)
-//{
-// uint8_t c[1];
-// c[0] = ch & 0x00FF;
-// HAL_UART_Transmit(&huart3, &*c, 1, 10);
-// return ch;
-//}
-//
-//int _write(int file,char *ptr, int len)
-//{
-// int DataIdx;
-// for(DataIdx= 0; DataIdx< len; DataIdx++)
-// {
-// __io_putchar(*ptr++);
-// }
-//return len;
-//}
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */

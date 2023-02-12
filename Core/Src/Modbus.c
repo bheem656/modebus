@@ -161,8 +161,7 @@ void ModbusInit(modbusHandler_t * modH)
 	  while(1); //error no more Modbus handlers supported
   }
 
-  // printf("modbus initialization complete");
-
+//  // printf("master initialization completed ! \r\n");
 }
 
 /**
@@ -205,7 +204,7 @@ void ModbusStart(modbusHandler_t * modH)
     modH->u8lastRec = modH->u8BufferSize = 0;
     modH->u16InCnt = modH->u16OutCnt = modH->u16errCnt = 0;
 
-    // printf("modbus start running");
+    // printf("modbus started ! \r\n");
 }
 
 
@@ -252,38 +251,27 @@ void StartTaskModbusSlave(void *argument)
 
   for(;;)
   {
-
-//	  // printf("__________slave task  running........\r\n");
 	  ulTaskNotifyTake(pdTRUE, portMAX_DELAY); /* Block indefinitely until a Modbus Frame arrives */
 
 	  modH->i8lastError = 0;
-	  modH->u8BufferSize = uxQueueMessagesWaiting(modH->QueueModbusHandle); // return number of message stored in Queue
-//
-//	  // printf("__________mesg in queue : %d........\r\n", modH->u8BufferSize);
-//	  if (modH->EN_Port != NULL )
-//	  {
-//	     	HAL_GPIO_WritePin(modH->EN_Port, modH->EN_Pin, GPIO_PIN_RESET); // is this required?
-//	  }
+	  modH->u8BufferSize = uxQueueMessagesWaiting(modH->QueueModbusHandle);
+	  if (modH->EN_Port != NULL )
+	  {
+	     	HAL_GPIO_WritePin(modH->EN_Port, modH->EN_Pin, GPIO_PIN_RESET); // is this required?
+	  }
 
-	  int8_t i8state = getRxBuffer(modH);  // copy msg
-
-	  // printf("__i8state : %d__ \r\n", i8state);
+	  int8_t i8state = getRxBuffer(modH);
 
 	  if (i8state < 7){
 		  //The size of the frame is invalid
 		  modH->i8lastError = ERR_BAD_SIZE;;
 		  xQueueGenericReset(modH->QueueModbusHandle, pdFALSE);
-		  // printf("__i8state : not valid  \r\n");
 		  continue;
 	  }
 
 
 		// check slave id
-	  if ( modH->au8Buffer[ID] !=  modH->u8id)
-	  {
-		  // printf("slave id not valid  \r\n");
-		  continue;
-	  }
+	  if ( modH->au8Buffer[ID] !=  modH->u8id) continue;
 
 	  // validate message: CRC, FCT, address and size
 	  uint8_t u8exception = validateRequest(modH);
@@ -296,11 +284,9 @@ void StartTaskModbusSlave(void *argument)
 		  }
 		  modH->i8lastError = u8exception;
 		  //return u8exception
-		  // printf("u8exception  \r\n  \r\n");
 		  continue;
 	  }
 
-	  // printf("__________ message get the semaphore........\r\n");
 	  //u32timeOut = millis(); TODO is this really need?
 	  modH->i8lastError = 0;
 
@@ -339,7 +325,7 @@ void StartTaskModbusSlave(void *argument)
 	    continue;
 	 }
 
-	  osDelay(1);
+	  //osDelay(1);
 }
 
 
@@ -347,6 +333,7 @@ void StartTaskModbusSlave(void *argument)
 void ModbusQuery(modbusHandler_t * modH, modbus_t telegram )
 {
 	//Add the telegram to the TX Queue of Modbus
+	 // printf("master ModbusQuery queue ! \r\n");
 	xQueueSendToBack(modH->QueueTelegramHandle, &telegram, 0);
 }
 
@@ -366,6 +353,8 @@ int8_t SendQuery(modbusHandler_t *modH ,  modbus_t telegram )
 {
 
 
+	// printf("master Sending query.......\r\n");
+
 	uint8_t u8regsno, u8bytesno;
 	uint8_t  error = 0;
 	xSemaphoreTake(modH->ModBusSphrHandle , portMAX_DELAY); //before processing the message get the semaphore
@@ -378,6 +367,7 @@ int8_t SendQuery(modbusHandler_t *modH ,  modbus_t telegram )
 	{
 		 modH->i8lastError = error;
 		 xSemaphoreGive(modH->ModBusSphrHandle);
+		 // printf("error in  query.......\r\n");
 		 return error;
 	}
 
@@ -447,8 +437,10 @@ int8_t SendQuery(modbusHandler_t *modH ,  modbus_t telegram )
 	    for (uint16_t i=0; i< telegram.u16CoilsNo; i++)
 	    {
 	        modH->au8Buffer[  modH->u8BufferSize ] = highByte(  modH->au16regs[ i ] );
+	        // printf("....highr byte %02X.....\r\n",modH->au8Buffer[  modH->u8BufferSize ]);
 	        modH->u8BufferSize++;
 	        modH->au8Buffer[  modH->u8BufferSize ] = lowByte(  modH->au16regs[ i ] );
+	        // printf("....lower byte %02X.....\r\n",modH->au8Buffer[  modH->u8BufferSize ]);
 	        modH->u8BufferSize++;
 	    }
 	    break;
@@ -473,15 +465,17 @@ void StartTaskModbusMaster(void *argument)
   modbusHandler_t *modH =  (modbusHandler_t *)argument;
   uint32_t ulNotificationValue;
   modbus_t telegram;
-
+  // printf("master starting task ! \r\n");
   for(;;)
   {
+
+	  // printf("______modbus task running____\r\n ");
 	  /*Wait indefinitely for a telegram to send */
 	  xQueueReceive(modH->QueueTelegramHandle, &telegram, portMAX_DELAY);
 
 	  /*Format and Send query */
 	  SendQuery(modH, telegram);
-
+	  // printf("________query send _______\r\n");
 	  /* Block indefinitely until a Modbus Frame arrives or query timeouts*/
 	  ulNotificationValue = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 	  modH->i8lastError = 0;
@@ -659,8 +653,6 @@ uint8_t validateAnswer(modbusHandler_t *modH)
 int8_t getRxBuffer(modbusHandler_t *modH)
 {
     bool bBuffOverflow = false;
-
-//    // printf("___________Get bufffer _____\r\n");
     int i;
     if (modH->EN_Port)
     {
@@ -668,25 +660,16 @@ int8_t getRxBuffer(modbusHandler_t *modH)
     	HAL_GPIO_WritePin(modH->EN_Port, modH->EN_Pin, GPIO_PIN_RESET);
     }
 
-//    // printf("___________rcv bufffer _____\r\n");
+
     modH->u8BufferSize = uxQueueMessagesWaiting(modH->QueueModbusHandle);
-//    // printf("___________size bufffer : %d_____\r\n",modH->u8BufferSize);
-
-
-
 
     for(i = 0; i<  modH->u8BufferSize; i++ )
-		{
-
-
-			  xQueueReceive(modH->QueueModbusHandle, &modH->au8Buffer[i], 0);
-			  // printf("___________data : %d \r\n",modH->au8Buffer[i]);
-
-		}
-
+   	{
+   		  xQueueReceive(modH->QueueModbusHandle, &modH->au8Buffer[i], 0);
+   	}
 
     modH->u16InCnt++;
-    // printf("___________cnt value %d _____\r\n", modH->u16InCnt);
+
 
     if (bBuffOverflow)
     {
@@ -713,13 +696,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
     {
     	if (mHandlers[i]->port == UartHandle  )
     	{
-//    		// printf("____uart RX callback___\r\n");
     		xQueueSendToBackFromISR( mHandlers[i]->QueueModbusHandle, &mHandlers[i]->dataRX, pdFALSE);
     		HAL_UART_Receive_IT(mHandlers[i]->port, &mHandlers[i]->dataRX, 1);
     		xTimerResetFromISR(mHandlers[i]->xTimerT35, &xHigherPriorityTaskWoken);
     		break;
     	}
     }
+
+
 }
 
 /**
@@ -876,6 +860,7 @@ void buildException( uint8_t u8exception, modbusHandler_t *modH )
  */
 void sendTxBuffer(modbusHandler_t *modH)
 {
+	printf("_________sending Data to slave ! _____________\r\n");
     // append CRC to message
     uint16_t u16crc = calcCRC(modH->au8Buffer, modH->u8BufferSize);
     modH->au8Buffer[ modH->u8BufferSize ] = u16crc >> 8;
@@ -883,19 +868,28 @@ void sendTxBuffer(modbusHandler_t *modH)
     modH->au8Buffer[ modH->u8BufferSize ] = u16crc & 0x00ff;
     modH->u8BufferSize++;
 
+
+
+	for (int i = 0; i < modH->u8BufferSize; i++)
+	         printf("%02X ", modH->au8Buffer[i]);
+     printf(" \r\n");
+     printf(" \r\n");
+
     if (modH->EN_Port != NULL)
     {
         // set RS485 transceiver to transmit mode
     	HAL_GPIO_WritePin(modH->EN_Port, modH->EN_Pin, GPIO_PIN_SET);
+    	// printf("______ PIN SET  HIGH _______\r\n");
     }
 
     // transfer buffer to serial line
-    //port->write( au8Buffer, u8BufferSize );
-    //HAL_UART_Transmit(modH->port, modH->au8Buffer , modH->u8BufferSize, 100);
+//    port->write( au8Buffer, u8BufferSize );
+//    HAL_UART_Transmit(modH->port, modH->au8Buffer , modH->u8BufferSize, 100);
     HAL_UART_Transmit_IT(modH->port, modH->au8Buffer,  modH->u8BufferSize);
+//     printf("___%02X_____\r\n", modH->au8Buffer);
 
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY); //wait notification from TXE interrupt
-
+    // printf("wait notification from TXE interrupt");
 
      if (modH->EN_Port != NULL)
      {
@@ -908,6 +902,7 @@ void sendTxBuffer(modbusHandler_t *modH)
     		taskYIELD();
     	 }
     	 HAL_GPIO_WritePin(modH->EN_Port, modH->EN_Pin, GPIO_PIN_RESET);
+    	 // printf("______ PIN SET  LOW _______\r\n");
      }
 
      xQueueGenericReset(modH->QueueModbusHandle, pdFALSE);
@@ -1150,8 +1145,6 @@ int8_t process_FC16(modbusHandler_t *modH )
     modH->u8BufferSize         = RESPONSE_SIZE;
 
     // write registers
-    printf("____________Recived data from Master !______\r\n");
-
     for (i = 0; i < u8regsno; i++)
     {
         temp = word(
@@ -1167,7 +1160,6 @@ int8_t process_FC16(modbusHandler_t *modH )
 
     return u8CopyBufferSize;
 }
-
 
 
 
