@@ -2,7 +2,7 @@
 /**
   ******************************************************************************
   * @file           : main.c
-  * @brief          : M2
+  * @brief          : Main program body
   ******************************************************************************
   * @attention
   *
@@ -60,7 +60,7 @@ uint16_t ModbusDATA2[8];
 
 uint8_t rf_enable =  0; // 1 - Master : 0 - slave
 uint8_t master_address = 0; // don't change it should be always 0
-uint8_t slave_address = 12; // range 10 -255 unique number for every slave
+uint8_t slave_address = 10; // range 10 -255 unique number for every slave
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -113,6 +113,7 @@ void master_slave_selction(uint8_t select)
 
 		   printf("slave selected with ID : %d \r\n", slave_address);
 	  }
+
 }
 /* USER CODE END PFP */
 

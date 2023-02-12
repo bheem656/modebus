@@ -13,7 +13,7 @@
 #include "stm32f7xx_hal.h"
 
 #define T35  5
-#define MAX_BUFFER  200	//!< maximum size for the communication buffer in bytes
+#define MAX_BUFFER  100	//!< maximum size for the communication buffer in bytes
 #define TIMEOUT_MODBUS 1000
 #define MAX_M_HANDLERS 2
 #define MAX_TELEGRAMS 2 //Max number of Telegrams for master
