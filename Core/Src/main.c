@@ -72,27 +72,13 @@ void StartDefaultTask(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+
+int _write(int file, char *ptr, int len)
 {
-	/* Modbus RTU callback BEGIN */
-	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-	int i;
-	for (i = 0; i < numberHandlers; i++ )
-	{
-		if (mHandlers[i]->port == huart )
-		{
-			xTaskNotifyFromISR(mHandlers[i]->myTaskModbusAHandle, 0, eNoAction, &xHigherPriorityTaskWoken);
-			break;
-		}
-	}
-	/* Modbus RTU callback END */
-
-	/*
-	 * Here you should implement the callback code for other UARTs not used by Modbus
-	 *
-	 * */
-
+	HAL_UART_Transmit(&huart3, (char*)ptr, len, HAL_MAX_DELAY);
+	return len;
 }
+
 /* USER CODE END 0 */
 
 /**
@@ -130,42 +116,46 @@ int main(void)
 
 //  char *data = "MODBUS COMMUNICATION\n";
 
-  modbus_t data_query;
-  data_query.u8id = 10;
-  data_query.u8fct = 3;
-  data_query.u16RegAdd = 0x10;
-  data_query.u16CoilsNo = 4;
-  data_query.au16reg = &ModbusDATA;
+//  modbus_t data_query;
+//  data_query.u8id = 10;
+//  data_query.u8fct = 3; // MB_FC_WRITE_MULTIPLE_REGISTERS
+//  data_query.u16RegAdd = 0x10;
+//  data_query.u16CoilsNo = 4; // write 4 byte data
+//  data_query.au16reg = &data;
 
 
 //  HAL_UART_Transmit(&huart1,(uint8_t *)data, 10, 1000);
 //  HAL_UART_Transmit_IT(&huart4, (uint8_t *)data, 100);
 
 
-  /* Master initialization */
-   ModbusH.uiModbusType = MASTER_RTU;
-   ModbusH.port =  &huart4;
-   ModbusH.u8id = 0; // Form master it must be 0
-   ModbusH.u16timeOut = 1000;
-   ModbusH.EN_Port = NULL;
-   ModbusH.EN_Port = EN_485_GPIO_Port;
-   ModbusH.EN_Pin = EN_485_Pin;
-   ModbusH.u32overTime = 0;
-   ModbusH.au16regs = ModbusDATA;
-   ModbusH.u8regsize= sizeof(ModbusDATA)/sizeof(ModbusDATA[0]);
-   //Initialize Modbus library
-   ModbusInit(&ModbusH);
-   //Start capturing traffic on serial Port
-   ModbusStart(&ModbusH);
 
 
-//   SendQuery(&ModbusH,data_query);
-
+//  /* Master initialization */
+//   ModbusH.uiModbusType = MASTER_RTU;
+//   ModbusH.port =  &huart4;
+//   ModbusH.u8id = 0; // Form master it must be 0
+//   ModbusH.u16timeOut = 1000;
+//   ModbusH.EN_Port = NULL;
+//   ModbusH.EN_Port = EN_485_GPIO_Port;
+//   ModbusH.EN_Pin = EN_485_Pin;
+//   ModbusH.u32overTime = 0;
+//   ModbusH.au16regs = ModbusDATA;
+//   ModbusH.u8regsize= sizeof(ModbusDATA)/sizeof(ModbusDATA[0]);
+//   //Initialize Modbus library
+//   ModbusInit(&ModbusH);
+//   //Start capturing traffic on serial Port
+//   ModbusStart(&ModbusH);
+//
+//
+//   ModbusQuery(&ModbusH,data_query);
    /* Slave initialization */
+//
+//
+  uint16_t rcvd_data[100];
 
    ModbusH2.uiModbusType = SLAVE_RTU;
-   ModbusH2.port =  &huart3;
-   ModbusH2.u8id = 17;
+   ModbusH2.port =  &huart4;
+   ModbusH2.u8id = 10;
    ModbusH2.u16timeOut = 1000;
    ModbusH2.EN_Port = NULL;
    //ModbusH2.EN_Port = LD2_GPIO_Port;
@@ -178,6 +168,8 @@ int main(void)
    //Start capturing traffic on serial Port
    ModbusStart(&ModbusH2);
 
+
+//   printf("main runnuing\r\n");
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -461,7 +453,23 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+//int __io_putchar(int ch)
+//{
+// uint8_t c[1];
+// c[0] = ch & 0x00FF;
+// HAL_UART_Transmit(&huart3, &*c, 1, 10);
+// return ch;
+//}
+//
+//int _write(int file,char *ptr, int len)
+//{
+// int DataIdx;
+// for(DataIdx= 0; DataIdx< len; DataIdx++)
+// {
+// __io_putchar(*ptr++);
+// }
+//return len;
+//}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */

@@ -4,9 +4,7 @@
 #define THIRD_PARTY_MODBUS_INC_MODBUS_H_
 
 #include <inttypes.h>
-//#include "usart.h"
 #include <stdbool.h>
-//#include "gpio.h"
 #include "FreeRTOS.h"
 #include "cmsis_os.h"
 #include "task.h"
@@ -15,7 +13,7 @@
 #include "stm32f7xx_hal.h"
 
 #define T35  5
-#define MAX_BUFFER  64	//!< maximum size for the communication buffer in bytes
+#define MAX_BUFFER  200	//!< maximum size for the communication buffer in bytes
 #define TIMEOUT_MODBUS 1000
 #define MAX_M_HANDLERS 2
 #define MAX_TELEGRAMS 2 //Max number of Telegrams for master
